@@ -18,7 +18,7 @@ import {
   resetData,
   STORAGE_KEY,
 } from "../../src/utils/storage";
-import { publicSettings } from "../../src/utils/github";
+import { publicSettings, isNewerRevision } from "../../src/utils/github";
 
 describe("weighted selection and exact visual landing", () => {
   it("respects each probability boundary, including zero and the final bucket", () => {
@@ -84,6 +84,16 @@ describe("weighted selection and exact visual landing", () => {
   });
 });
 describe("validation and CSV", () => {
+  it("never reverts fresh settings to older CDN content", () => {
+    expect(isNewerRevision("initial", "2026-09-14T05:00:00Z")).toBe(false);
+    expect(
+      isNewerRevision("2026-09-14T04:00:00Z", "2026-09-14T05:00:00Z"),
+    ).toBe(false);
+    expect(
+      isNewerRevision("2026-09-14T06:00:00Z", "2026-09-14T05:00:00Z"),
+    ).toBe(true);
+    expect(isNewerRevision("2026-09-14T06:00:00Z", "local-test")).toBe(false);
+  });
   it("publishes only permitted fields, even if imported JSON has unexpected secrets", () => {
     const c = cloneConfig();
     Object.assign(c, { token: "secret", records: ["private"] });

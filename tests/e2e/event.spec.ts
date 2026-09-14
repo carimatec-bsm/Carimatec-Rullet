@@ -3,8 +3,30 @@ import { readFile } from "node:fs/promises";
 import { cloneConfig } from "../../src/data/defaultConfig";
 import { indexAtPointer } from "../../src/utils/rouletteLogic";
 import type { Config } from "../../src/types";
+test("fresh API settings cannot be overwritten by an older CDN poll", async ({
+  page,
+}) => {
+  const fresh = cloneConfig();
+  fresh.revision = "2026-09-14T06:00:00Z";
+  fresh.event.name = "최신 공통 설정";
+  let rawRequests = 0;
+  await page.route("https://api.github.com/**", (route) =>
+    route.fulfill({ json: fresh }),
+  );
+  await page.route("https://raw.githubusercontent.com/**", (route) => {
+    rawRequests++;
+    return route.fulfill({ json: cloneConfig() });
+  });
+  await page.clock.install();
+  await page.goto("/");
+  await expect(page.locator(".event-badge")).toContainText("최신 공통 설정");
+  await page.clock.fastForward(61000);
+  await expect.poll(() => rawRequests).toBeGreaterThan(0);
+  await expect(page.locator(".event-badge")).toContainText("최신 공통 설정");
+});
 const KEY = "carimatec.roulette.v1";
 async function offline(page: Page) {
+  await page.route("https://api.github.com/**", (route) => route.abort());
   await page.route("https://raw.githubusercontent.com/**", (route) =>
     route.abort(),
   );
@@ -238,10 +260,14 @@ test("GitHub publish shares only configuration across devices and detects confli
 }) => {
   let remote: Config = cloneConfig();
   let sent: Record<string, unknown> | undefined;
-  const mockRaw = async (p: Page) =>
-    p.route("https://raw.githubusercontent.com/**", (route) =>
+  const mockRaw = async (p: Page) => {
+    await p.route("https://raw.githubusercontent.com/**", (route) =>
       route.fulfill({ json: remote }),
     );
+    await p.route("https://api.github.com/repos/**/contents/**", (route) =>
+      route.fulfill({ json: remote }),
+    );
+  };
   await mockRaw(page);
   await page.route(
     "https://api.github.com/repos/**/contents/**",
@@ -254,7 +280,11 @@ test("GitHub publish shares only configuration across devices and detects confli
           status: 200,
           json: { content: { sha: "new-sha" } },
         });
-      } else
+      } else if (
+        route.request().headers().accept === "application/vnd.github.raw+json"
+      )
+        await route.fulfill({ json: remote });
+      else
         await route.fulfill({
           json: {
             sha: "old-sha",

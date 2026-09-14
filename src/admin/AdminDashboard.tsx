@@ -31,7 +31,11 @@ import { fieldLabels } from "../components/CustomerForm";
 import { PrizeManager } from "./PrizeManager";
 import { ParticipantList } from "./ParticipantList";
 import { makeId, readStore, resetData, saveConfig } from "../utils/storage";
-import { fetchPublishedConfig, publishConfig } from "../utils/github";
+import {
+  fetchPublishedConfig,
+  publishConfig,
+  isNewerRevision,
+} from "../utils/github";
 import { validateConfig, assertConfig } from "../utils/validation";
 import { downloadFile } from "../utils/csvExport";
 import { remaining } from "../utils/rouletteLogic";
@@ -170,8 +174,10 @@ export function AdminDashboard() {
           saved.config.revision.startsWith("local-")
         )
           return;
-        setBaseline(remote.revision);
-        if (remote.revision !== saved.config.revision) {
+        if (remote.revision === saved.config.revision)
+          setBaseline(remote.revision);
+        if (isNewerRevision(remote.revision, saved.config.revision)) {
+          setBaseline(remote.revision);
           const next = saveConfig(remote);
           setState(next);
           setDraft(cloneConfig(remote));
@@ -246,7 +252,7 @@ export function AdminDashboard() {
       setPublishOpen(false);
       setToken("");
       setNotice(
-        "GitHub에 공통 설정을 저장했습니다. 다른 기기는 대기 화면에서 약 1분 내 확인합니다.",
+        "GitHub에 공통 설정을 저장했습니다. 다른 기기는 새로고침 시 최신 설정을 확인하며 자동 반영에는 약 1~5분이 걸릴 수 있습니다.",
       );
     } catch (e) {
       setError((e as Error).message);
@@ -258,6 +264,13 @@ export function AdminDashboard() {
     setSyncBusy(true);
     try {
       const config = await fetchPublishedConfig();
+      if (
+        config.revision !== baseline &&
+        !isNewerRevision(config.revision, baseline)
+      )
+        throw new Error(
+          "최신 설정을 확인하지 못했습니다. 잠시 후 다시 불러와 주세요.",
+        );
       setState(saveConfig(config));
       setDraft(cloneConfig(config));
       setBaseline(config.revision);

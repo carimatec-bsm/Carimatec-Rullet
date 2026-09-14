@@ -14,7 +14,11 @@ import { Logo } from "./components/Logo";
 import { RouletteWheel } from "./components/RouletteWheel";
 import { CustomerForm } from "./components/CustomerForm";
 import { ResultModal } from "./components/ResultModal";
-import { fetchBundledConfig, fetchPublishedConfig } from "./utils/github";
+import {
+  fetchBundledConfig,
+  fetchPublishedConfig,
+  isNewerRevision,
+} from "./utils/github";
 import {
   finishParticipant,
   readStore,
@@ -49,13 +53,14 @@ export default function App() {
   const spinning = phase === "spinning";
   useEffect(() => {
     let cancelled = false;
-    async function sync() {
+    let pollCount = 0;
+    async function sync(fresh = true) {
       try {
         const saved = readStore();
         if (saved.pending) return;
         let remote;
         try {
-          remote = await fetchPublishedConfig();
+          remote = await fetchPublishedConfig(fresh);
           if (!cancelled) setConnection("공통 설정 연결됨");
         } catch {
           remote =
@@ -69,7 +74,7 @@ export default function App() {
           remote &&
           !readStore().pending &&
           !readStore().config.revision.startsWith("local-") &&
-          remote.revision !== readStore().config.revision
+          isNewerRevision(remote.revision, readStore().config.revision)
         )
           setState(saveConfig(remote));
       } catch {
@@ -86,7 +91,7 @@ export default function App() {
     void sync();
     const timer = setInterval(() => {
       setNow(Date.now());
-      void sync();
+      void sync(++pollCount % 5 === 0);
     }, 60000);
     const storage = () => {
       try {

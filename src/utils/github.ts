@@ -22,7 +22,22 @@ export async function timedFetch(url: string, options: RequestInit = {}) {
     clearTimeout(timer);
   }
 }
-export async function fetchPublishedConfig(): Promise<Config> {
+export async function fetchPublishedConfig(fresh = true): Promise<Config> {
+  if (fresh) {
+    try {
+      const response = await timedFetch(
+        `${endpoint}?ref=${REPOSITORY.branch}&t=${Date.now()}`,
+        { headers: { Accept: "application/vnd.github.raw+json" } },
+      );
+      if (response.ok) {
+        const config: unknown = await response.json();
+        assertConfig(config);
+        return config;
+      }
+    } catch {
+      /* An offline or rate-limited API can fall back to the public CDN. */
+    }
+  }
   const url = `https://raw.githubusercontent.com/${repo}/${REPOSITORY.branch}/${REPOSITORY.path}?t=${Date.now()}`;
   const response = await timedFetch(url);
   if (!response.ok)
@@ -32,6 +47,20 @@ export async function fetchPublishedConfig(): Promise<Config> {
   const config: unknown = await response.json();
   assertConfig(config);
   return config;
+}
+export function isNewerRevision(remote: string, current: string) {
+  if (
+    remote === current ||
+    current.startsWith("local-") ||
+    remote === "initial"
+  )
+    return false;
+  if (current === "initial") return true;
+  const nextTime = Date.parse(remote),
+    currentTime = Date.parse(current);
+  return Number.isFinite(nextTime) && Number.isFinite(currentTime)
+    ? nextTime > currentTime
+    : remote !== current;
 }
 export async function fetchBundledConfig(): Promise<Config> {
   const response = await timedFetch(
