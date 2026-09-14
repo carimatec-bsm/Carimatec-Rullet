@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "2026-09-14T08:50:11.581Z",
+  "revision": "2026-09-14T08:50:27.659Z",
   "eventId": "intra-2026",
   "event": {
     "name": "INTRA 2026",
@@ -13,7 +13,7 @@
     "surveyUrl": ""
   },
   "display": {
-    "theme": "light",
+    "theme": "dark",
     "layout": "auto",
     "names": true,
     "images": true,
