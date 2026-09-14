@@ -220,9 +220,6 @@ export default function App() {
       </header>
       <main className="event-main">
         <section className="event-copy">
-          <div className="eyebrow">
-            <span /> A LITTLE SPIN. A BIG POSSIBILITY.
-          </div>
           <h1>
             <span>{config.event.mainTitle}</span>
             <span className="purple-text">
