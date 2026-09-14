@@ -145,9 +145,7 @@ export function AdminDashboard() {
         ? "initial"
         : state.config.revision),
   );
-  const [reset, setReset] = useState<"records" | "stock" | "settings" | null>(
-    null,
-  );
+  const [resetOpen, setResetOpen] = useState(false);
   const [reloadOpen, setReloadOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const configRef = useRef(draft);
@@ -949,30 +947,25 @@ export function AdminDashboard() {
                 <section className="card field-card danger-zone">
                   <h3>데이터 초기화</h3>
                   <p className="muted small">
-                    참여 기록 초기화는 소진 재고를 복구하지 않습니다. 전체 설정
-                    초기화는 이 기기의 설정만 초기화하며, GitHub에 공통 저장할
-                    때 다른 기기에 반영됩니다.
+                    이 기기의 참여 기록과 소진 수량만 함께 초기화합니다. 잔여
+                    수량은 각 상품에 설정된 초기 수량으로 복구되며, 상품
+                    목록·이미지·확률·이벤트 설정과 GitHub 공통 설정은 변경하지
+                    않습니다.
                   </p>
                   <div className="settings-actions">
                     <button
                       className="button danger-outline"
-                      onClick={() => setReset("records")}
+                      disabled={!!state.pending}
+                      onClick={() => setResetOpen(true)}
                     >
-                      참여 기록 초기화
-                    </button>
-                    <button
-                      className="button danger-outline"
-                      onClick={() => setReset("stock")}
-                    >
-                      상품 수량 초기화
-                    </button>
-                    <button
-                      className="button danger-outline"
-                      onClick={() => setReset("settings")}
-                    >
-                      전체 설정 초기화
+                      참여 기록·상품 수량 초기화
                     </button>
                   </div>
+                  {state.pending && (
+                    <p className="small muted">
+                      진행 중인 룰렛 결과를 확인한 뒤 초기화할 수 있습니다.
+                    </p>
+                  )}
                 </section>
                 <p className="small muted">
                   관리자 PIN은 현장 접근 방지용입니다. 정적 페이지의 실제 보안
@@ -1150,35 +1143,38 @@ export function AdminDashboard() {
           </div>
         </Modal>
       )}
-      {reset && (
-        <Modal title="데이터 초기화 확인" onClose={() => setReset(null)}>
-          <h2>
-            {reset === "records"
-              ? "참여 기록을 삭제할까요?"
-              : reset === "stock"
-                ? "재고를 초기 수량으로 복구할까요?"
-                : "기본 설정으로 초기화할까요?"}
-          </h2>
+      {resetOpen && (
+        <Modal title="데이터 초기화 확인" onClose={() => setResetOpen(false)}>
+          <h2>참여 기록과 상품 수량을 초기화할까요?</h2>
           <p>
-            {reset === "records"
-              ? "이 기기의 모든 이벤트 참여 기록이 삭제됩니다. CSV 또는 전체 백업을 다운로드했는지 확인하세요."
-              : reset === "stock"
-                ? "이 기기의 상품 소진 수량을 0으로 되돌립니다. 당첨 기록은 유지됩니다."
-                : "기본 예시 경품과 화면 설정으로 변경됩니다. 기존 기록과 소진 수량은 유지됩니다."}
+            이 기기의 모든 참여 기록 {state.records.length}건을 삭제하고, 소진
+            수량을 0으로 되돌립니다. 잔여 수량은 각 상품에 설정된 초기 수량으로
+            복구됩니다.
+          </p>
+          <p>
+            상품 목록·이미지·확률·이벤트 설정은 그대로 유지됩니다. GitHub 공통
+            설정과 다른 기기의 기록·수량은 변경하지 않습니다. 삭제한 기록은 이
+            화면에서 복구할 수 없으므로 CSV 또는 기기 전체 백업을 먼저
+            보관하세요.
           </p>
           <div className="modal-actions">
-            <button className="button secondary" onClick={() => setReset(null)}>
+            <button
+              className="button secondary"
+              onClick={() => setResetOpen(false)}
+            >
               취소
             </button>
             <button
               className="button danger"
               onClick={() => {
                 try {
-                  const next = resetData(reset);
+                  const next = resetData();
                   setState(next);
-                  setDraft(cloneConfig(next.config));
-                  setReset(null);
-                  setNotice("초기화했습니다.");
+                  setResetOpen(false);
+                  setError("");
+                  setNotice(
+                    "참여 기록과 상품 소진 수량을 초기화했습니다. 상품 및 이벤트 설정은 유지됩니다.",
+                  );
                 } catch (e) {
                   setError((e as Error).message);
                 }

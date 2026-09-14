@@ -1,4 +1,4 @@
-import { cloneConfig, defaultConfig } from "../data/defaultConfig";
+import { cloneConfig } from "../data/defaultConfig";
 import type { Config, Customer, Store } from "../types";
 import { assertConfig } from "./validation";
 import {
@@ -121,17 +121,14 @@ export function finishParticipant() {
   state.pending = null;
   return writeStore(state);
 }
-export function resetData(kind: "records" | "stock" | "settings") {
+// Reset local operations in ONE write; never replace products or event settings.
+export function resetData() {
   const state = readStore();
   if (state.pending) throw new Error("진행 중인 결과를 먼저 확인해 주세요.");
-  if (kind === "records") state.records = [];
-  if (kind === "stock") state.used = {};
-  if (kind === "settings") {
-    state.config = {
-      ...cloneConfig(defaultConfig),
-      revision: `local-${makeId()}`,
-      baseRevision: state.config.baseRevision || state.config.revision,
-    };
-  }
+  const lock = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
+  if (lock && lock.until > Date.now())
+    throw new Error("참여를 처리 중입니다. 결과를 확인한 뒤 초기화해 주세요.");
+  state.records = [];
+  state.used = {};
   return writeStore(state);
 }

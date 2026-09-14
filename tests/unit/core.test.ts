@@ -165,11 +165,49 @@ describe("durable inventory transaction", () => {
     expect(readStore().records).toHaveLength(1);
     finishParticipant();
     expect(readStore().pending).toBeNull();
-    resetData("records");
+    resetData();
     expect(readStore().records).toHaveLength(0);
-    expect(readStore().used.coffee).toBe(1);
-    resetData("stock");
     expect(readStore().used).toEqual({});
+    expect(readStore().config).toEqual(c);
+  });
+  it("preserves all saved product/event settings and revisions when resetting operations", async () => {
+    const config = cloneConfig();
+    config.revision = "2026-09-14T08:00:00.000Z";
+    config.event.name = "운영 중인 전시회";
+    config.prizes[0].name = "운영자가 등록한 특별 경품";
+    config.prizes[0].initialStock = 80;
+    config.prizes.forEach((p, i) => (p.weight = i === 0 ? 100 : 0));
+    saveConfig(config);
+    await startSpin(emptyCustomer);
+    const pendingState = memory.get(STORAGE_KEY);
+    expect(() => resetData()).toThrow("진행 중인 결과");
+    expect(memory.get(STORAGE_KEY)).toBe(pendingState);
+    finishParticipant();
+    const result = resetData();
+    expect(result.config).toEqual(config);
+    expect(result.records).toEqual([]);
+    expect(result.used).toEqual({});
+    expect(remaining(result.config.prizes[0], result.used)).toBe(80);
+    expect(result.pending).toBeNull();
+    expect(resetData()).toEqual(result);
+  });
+  it("does not partially reset records or stock if storage fails or a spin is starting", async () => {
+    saveConfig(cloneConfig());
+    await startSpin(emptyCustomer);
+    finishParticipant();
+    const before = memory.get(STORAGE_KEY);
+    memory.set(
+      `${STORAGE_KEY}.lock`,
+      JSON.stringify({ owner: "other", until: Date.now() + 10000 }),
+    );
+    expect(() => resetData()).toThrow("참여를 처리 중");
+    expect(memory.get(STORAGE_KEY)).toBe(before);
+    memory.delete(`${STORAGE_KEY}.lock`);
+    localStorage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    expect(() => resetData()).toThrow("저장 공간");
+    expect(memory.get(STORAGE_KEY)).toBe(before);
   });
   it("does not award or decrement when storage is full", async () => {
     saveConfig(cloneConfig());

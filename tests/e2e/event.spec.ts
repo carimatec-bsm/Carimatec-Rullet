@@ -436,13 +436,21 @@ test("exhaustion stops awards and reset requires confirmation", async ({
   ).toBeVisible();
   await login(page);
   await page.getByRole("button", { name: "운영 및 데이터" }).click();
+  const beforeReset = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!),
+    KEY,
+  );
+  await expect(page.locator(".danger-zone button")).toHaveCount(1);
   await page
-    .getByRole("button", { name: "상품 수량 초기화", exact: true })
+    .getByRole("button", { name: "참여 기록·상품 수량 초기화", exact: true })
     .click();
   await expect(
     page.getByRole("dialog", { name: "데이터 초기화 확인" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "취소", exact: true }).click();
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), KEY),
+  ).toEqual(beforeReset);
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!).used.coffee,
@@ -450,7 +458,7 @@ test("exhaustion stops awards and reset requires confirmation", async ({
     ),
   ).toBe(1);
   await page
-    .getByRole("button", { name: "상품 수량 초기화", exact: true })
+    .getByRole("button", { name: "참여 기록·상품 수량 초기화", exact: true })
     .click();
   await page.getByRole("button", { name: "초기화", exact: true }).click();
   expect(
@@ -459,7 +467,72 @@ test("exhaustion stops awards and reset requires confirmation", async ({
       KEY,
     ),
   ).toBe(0);
+  const afterReset = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!),
+    KEY,
+  );
+  expect(afterReset.records).toEqual([]);
+  expect(afterReset.used).toEqual({});
+  expect(afterReset.config).toEqual(beforeReset.config);
+  await page.reload();
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), KEY),
+  ).toEqual(afterReset);
+  await page.getByRole("button", { name: "운영 및 데이터" }).click();
+  await page
+    .locator(".danger-zone")
+    .screenshot({ path: ".qa/combined-reset.png" });
+  await page.goto("/");
+  await expect(page.locator(".spin-button")).toBeEnabled();
 });
+test("combined reset preserves unsaved admin edits and does not publish settings", async ({
+  page,
+}) => {
+  await seed(page);
+  await login(page);
+  const storedConfig = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!).config,
+    KEY,
+  );
+  await page.getByRole("button", { name: "이벤트 설정", exact: true }).click();
+  await page
+    .getByLabel("전시회명", { exact: true })
+    .fill("유지해야 하는 수정 중 제목");
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await page
+    .getByLabel("상품명", { exact: true })
+    .first()
+    .fill("수정 중인 경품");
+  const writes: string[] = [];
+  page.on("request", (request) => {
+    if (["PUT", "POST", "PATCH", "DELETE"].includes(request.method()))
+      writes.push(request.url());
+  });
+  await page
+    .getByRole("button", { name: "운영 및 데이터", exact: true })
+    .click();
+  await expect(page.locator(".danger-zone button")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "참여 기록·상품 수량 초기화", exact: true })
+    .click();
+  await page.getByRole("button", { name: "초기화", exact: true }).click();
+  expect(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!).config,
+      KEY,
+    ),
+  ).toEqual(storedConfig);
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await expect(page.getByLabel("상품명", { exact: true }).first()).toHaveValue(
+    "수정 중인 경품",
+  );
+  await page.getByRole("button", { name: "이벤트 설정", exact: true }).click();
+  await expect(page.getByLabel("전시회명", { exact: true })).toHaveValue(
+    "유지해야 하는 수정 중 제목",
+  );
+  expect(writes).toEqual([]);
+});
+
 test("GitHub publish shares only configuration across devices and detects conflicts (API mock)", async ({
   page,
   browser,
