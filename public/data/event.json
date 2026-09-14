@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "local-mu0w7b9l-magu8lgu",
+  "revision": "2026-09-14T08:50:11.581Z",
   "eventId": "intra-2026",
   "event": {
     "name": "INTRA 2026",
@@ -98,6 +98,5 @@
       "unlimited": false,
       "isLose": false
     }
-  ],
-  "baseRevision": "2026-09-14T05:06:35.227Z"
+  ]
 }
