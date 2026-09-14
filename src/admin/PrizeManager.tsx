@@ -17,6 +17,7 @@ import {
   remaining,
 } from "../utils/rouletteLogic";
 import { Modal } from "../components/Modal";
+import { SegmentColorPicker } from "./SegmentColorPicker";
 export function PrizeManager({
   config,
   update,
@@ -186,20 +187,12 @@ export function PrizeManager({
                     }
                   />
                 </label>
-                <label>
-                  세그먼트 색상
-                  <div className="color-input">
-                    <input
-                      aria-label="세그먼트 색상"
-                      type="color"
-                      value={prize.color}
-                      onChange={(e) =>
-                        change(prize.id, { color: e.target.value })
-                      }
-                    />
-                    <span>{prize.color.toUpperCase()}</span>
-                  </div>
-                </label>
+                <SegmentColorPicker
+                  name={prize.name}
+                  value={prize.color}
+                  onChange={(color) => change(prize.id, { color })}
+                  onError={onError}
+                />
                 <label>
                   초기 상품 수량
                   <input

@@ -615,6 +615,13 @@ a svg {
   justify-content: center;
   color: var(--purple);
 }
+.hub-symbol {
+  display: block;
+  width: 60%;
+  height: 65%;
+  overflow: hidden;
+  pointer-events: none;
+}
 .hub-icon {
   font-family: var(--gotham);
   font-size: clamp(32px, 3.4vw, 64px);
@@ -1577,7 +1584,7 @@ a svg {
   font-size: 12px;
   color: #9376a7;
 }
-.color-input input {
+.color-input input[type="color"] {
   appearance: none;
   -webkit-appearance: none;
   border: 0;
@@ -1593,6 +1600,54 @@ a svg {
 .color-input input::-webkit-color-swatch {
   border-radius: 6px;
   border: 0;
+}
+.segment-color-field {
+  min-width: 0;
+  font-size: 11px;
+}
+.segment-color-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+.segment-color-controls .color-input {
+  flex: 1 1 150px;
+  min-width: 0;
+  margin-top: 0;
+  padding: 0 8px;
+  gap: 6px;
+}
+.segment-color-controls input[type="color"] {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  padding: 5px;
+}
+.segment-color-controls .hex-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  font-family: monospace;
+}
+.segment-color-controls .eyedropper-button {
+  min-height: 52px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.color-hint,
+.color-notice {
+  font-size: 10px;
+  line-height: 1.6;
+  margin: 7px 0 0;
+  color: #80718c;
+}
+.color-notice:empty {
+  display: none;
 }
 .probability-editor {
   margin-top: 20px;

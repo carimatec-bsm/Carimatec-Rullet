@@ -25,6 +25,96 @@ test("fresh API settings cannot be overwritten by an older CDN poll", async ({
   await expect(page.locator(".event-badge")).toContainText("최신 공통 설정");
 });
 const KEY = "carimatec.roulette.v1";
+test("segment eyedropper applies, cancels safely and persists its color", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.addInitScript(() => {
+    let calls = 0;
+    Object.defineProperty(window, "EyeDropper", {
+      configurable: true,
+      value: class {
+        async open() {
+          calls++;
+          if (calls === 2) throw new DOMException("Canceled", "AbortError");
+          if (calls === 3) throw new DOMException("Failed", "OperationError");
+          return { sRGBHex: "#12ab56" };
+        }
+      },
+    });
+  });
+  await login(page);
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  const picker = page.getByRole("button", {
+    name: "스타벅스 상품권 색상 스포이드",
+    exact: true,
+  });
+  const hex = page.getByRole("textbox", { name: "스타벅스 상품권 색상 HEX" });
+  await picker.click();
+  await expect(hex).toHaveValue("#12AB56");
+  await expect(
+    page.locator(".preview-canvas .wheel-svg g[data-prize-id] > path").first(),
+  ).toHaveAttribute("fill", "#12AB56");
+  await picker.click();
+  await expect(
+    page.getByText("색상 선택을 취소했습니다. 기존 색상은 유지됩니다."),
+  ).toBeVisible();
+  await expect(hex).toHaveValue("#12AB56");
+  await picker.click();
+  await expect(
+    page.getByText(
+      "스포이드를 열 수 없습니다. 다시 시도하거나 색상표 / HEX 입력을 사용하세요.",
+    ),
+  ).toBeVisible();
+  await expect(hex).toHaveValue("#12AB56");
+  await page
+    .getByRole("button", { name: "이 기기에 저장", exact: true })
+    .click();
+  await page.reload();
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await expect(hex).toHaveValue("#12AB56");
+  await expect(page.locator(".hub-symbol")).toBeVisible();
+  await expect(page.locator(".wheel-hub")).toHaveText("");
+  await page
+    .locator(".prize-editor")
+    .first()
+    .screenshot({ path: ".qa/admin-colors.png" });
+});
+
+test("unsupported eyedropper retains touch color and HEX controls", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "EyeDropper", {
+      configurable: true,
+      value: undefined,
+    }),
+  );
+  await login(page);
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "스타벅스 상품권 색상 스포이드" }),
+  ).toBeDisabled();
+  const hex = page.getByRole("textbox", { name: "스타벅스 상품권 색상 HEX" });
+  await hex.fill("#7030A0");
+  const color = page.getByLabel("스타벅스 상품권 세그먼트 색상", {
+    exact: true,
+  });
+  await expect(color).toHaveValue("#7030a0");
+  await hex.fill("#XYZ");
+  await hex.blur();
+  await expect(hex).toHaveValue("#7030A0");
+  await color.fill("#abcdef");
+  await expect(hex).toHaveValue("#ABCDEF");
+  const field = page.locator(".segment-color-field").first();
+  await field.scrollIntoViewIfNeeded();
+  const bounds = await field.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await field.screenshot({ path: ".qa/admin-colors-mobile.png" });
+});
 async function offline(page: Page) {
   await page.route("https://api.github.com/**", (route) => route.abort());
   await page.route("https://raw.githubusercontent.com/**", (route) =>

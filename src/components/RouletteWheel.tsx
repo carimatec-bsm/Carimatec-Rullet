@@ -147,10 +147,22 @@ export const RouletteWheel = forwardRef<SVGSVGElement, Props>(
             })}
           </svg>
           <div className="wheel-hub">
-            <span className="hub-icon">
-              C<span>·</span>
-            </span>
-            <small>MAKE IT REAL</small>
+            {/* Show only the original logo's right-hand symbol, without altering the artwork. */}
+            <svg
+              className="hub-symbol"
+              viewBox="650 0 147 166"
+              role="img"
+              aria-label="캐리마텍 심볼"
+              focusable="false"
+            >
+              <image
+                href={assetUrl("assets/logo.png")}
+                x="0"
+                y="0"
+                width="797"
+                height="166"
+              />
+            </svg>
           </div>
         </div>
         <div className="wheel-shadow" />
