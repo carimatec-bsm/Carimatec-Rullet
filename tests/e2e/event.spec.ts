@@ -25,6 +25,122 @@ test("fresh API settings cannot be overwritten by an older CDN poll", async ({
   await expect(page.locator(".event-badge")).toContainText("최신 공통 설정");
 });
 const KEY = "carimatec.roulette.v1";
+test("settings export is a publishable event.json with fresh revision", async ({
+  page,
+}) => {
+  const config = cloneConfig();
+  config.revision = "local-export-test";
+  config.baseRevision = "initial";
+  await seed(page, config);
+  await login(page);
+  await page
+    .getByRole("button", { name: "운영 및 데이터", exact: true })
+    .click();
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "설정 JSON 내보내기", exact: true })
+    .click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("event.json");
+  const output = JSON.parse(await readFile((await file.path())!, "utf8"));
+  expect(output.revision).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(Math.abs(Date.now() - Date.parse(output.revision))).toBeLessThan(
+    30000,
+  );
+  expect(output).not.toHaveProperty("baseRevision");
+  expect(output).not.toHaveProperty("records");
+  expect(output).not.toHaveProperty("used");
+  expect(output.prizes).toEqual(config.prizes);
+  expect(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!).config.revision,
+      KEY,
+    ),
+  ).toBe("local-test");
+});
+
+test("actual prize images are enlarged, upright during spin, and clear of labels", async ({
+  page,
+}) => {
+  const config: Config = JSON.parse(
+    await readFile("public/data/event.json", "utf8"),
+  );
+  config.behavior.paused = false;
+  config.behavior.autoExclude = true;
+  config.prizes.forEach((p) => {
+    p.unlimited = true;
+    p.active = true;
+  });
+  await seed(page, config);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/");
+  await expect(page.locator(".prize-wheel-image")).toHaveCount(5);
+  await expect(page.locator(".spin-button")).toBeEnabled();
+  await page.screenshot({ path: ".qa/actual-prizes-large.png" });
+  const check = async () => {
+    const metrics = await page
+      .locator(".prize-wheel-image")
+      .evaluateAll((images) =>
+        images.map((node) => {
+          const image = node as SVGImageElement;
+          const matrix = image.getScreenCTM()!;
+          const imageBox = image.getBoundingClientRect();
+          const label = image
+            .closest("[data-prize-id]")!
+            .querySelector<SVGGElement>(".prize-wheel-label")!;
+          const wheel = image.closest(".wheel-svg") as SVGSVGElement;
+          const localMatrix = wheel
+            .getScreenCTM()!
+            .inverse()
+            .multiply(label.getScreenCTM()!);
+          const box = label.getBBox();
+          const labelRadii = [box.x, box.x + box.width].flatMap((x) =>
+            [box.y, box.y + box.height].map((y) => {
+              const point = new DOMPoint(x, y).matrixTransform(localMatrix);
+              return Math.hypot(point.x - 240, point.y - 240);
+            }),
+          );
+          const hubBox = document
+            .querySelector(".wheel-hub")!
+            .getBoundingClientRect();
+          const overlaps = (a: DOMRect, b: DOMRect) =>
+            a.left < b.right &&
+            a.right > b.left &&
+            a.top < b.bottom &&
+            a.bottom > b.top;
+          return {
+            angle: (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI,
+            size: image.width.baseVal.value,
+            ratio: image.getAttribute("preserveAspectRatio"),
+            labelOuter: Math.max(...labelRadii),
+            labelInner: Math.min(...labelRadii),
+            hubOverlap: overlaps(imageBox, hubBox),
+          };
+        }),
+      );
+    for (const m of metrics) {
+      expect(Math.abs(m.angle)).toBeLessThan(0.01);
+      expect(m.size).toBeGreaterThanOrEqual(54 * 1.7);
+      expect(m.ratio).toBe("xMidYMid meet");
+      expect(m.hubOverlap).toBe(false);
+      expect(m.labelOuter).toBeLessThan(94.2); // Images cannot enter this radial band.
+      expect(m.labelInner).toBeGreaterThan(55); // Central logo and its border remain clear.
+    }
+  };
+  await check();
+  await initiate(page);
+  await expect(page.locator(".spin-button")).toHaveClass(/is-spinning/);
+  await page.waitForTimeout(500);
+  await check();
+  await expect(page.getByRole("dialog", { name: "룰렛 결과" })).toBeVisible({
+    timeout: 8000,
+  });
+  await check();
+  await page.getByRole("button", { name: "확인 · 다음 참여자" }).click();
+  await check();
+  await page.setViewportSize({ width: 1080, height: 1920 });
+  await page.screenshot({ path: ".qa/actual-prizes-portrait.png" });
+});
 test("segment eyedropper applies, cancels safely and persists its color", async ({
   page,
 }) => {

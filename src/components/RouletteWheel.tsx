@@ -1,5 +1,10 @@
 import { forwardRef } from "react";
 import type { Config, Prize } from "../types";
+import {
+  prizeLayout,
+  splitPrizeLabel,
+  WHEEL_HUB_SIZE_RATIO,
+} from "../utils/wheelLayout";
 export function assetUrl(path: string) {
   return path.startsWith("assets/")
     ? `${import.meta.env.BASE_URL}${path}`
@@ -13,16 +18,6 @@ function foreground(hex: string) {
   return (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000 < 156
     ? "#ffffff"
     : "#342043";
-}
-function splitLabel(value: string, count: number) {
-  const max = count >= 10 ? 4 : count >= 7 ? 5 : count === 6 ? 6 : 9;
-  const characters = Array.from(value);
-  if (characters.length <= max) return [value];
-  return [
-    characters.slice(0, max).join(""),
-    characters.slice(max, max * 2 - 1).join("") +
-      (characters.length > max * 2 - 1 ? "…" : ""),
-  ];
 }
 type Props = {
   prizes: Prize[];
@@ -67,7 +62,19 @@ export const RouletteWheel = forwardRef<SVGSVGElement, Props>(
                 y1 = 240 - r * Math.cos(start),
                 x2 = 240 + r * Math.sin(end),
                 y2 = 240 - r * Math.cos(end);
-              const lines = splitLabel(p.label, count);
+              const lines = display.names
+                ? splitPrizeLabel(p.label, count)
+                : [];
+              const rows = [
+                ...lines,
+                ...(display.probabilities
+                  ? [`${(probabilities?.[p.id] ?? p.weight).toFixed(1)}%`]
+                  : []),
+                ...(display.descriptions
+                  ? [splitPrizeLabel(p.description, count)[0]]
+                  : []),
+              ];
+              const layout = prizeLayout(count, i, rows, display.images);
               const text = foreground(p.color);
               return (
                 <g key={p.id} data-prize-id={p.id}>
@@ -77,76 +84,78 @@ export const RouletteWheel = forwardRef<SVGSVGElement, Props>(
                     stroke="#ffffff"
                     strokeWidth="1.8"
                   />
-                  <g transform={`rotate(${(i + 0.5) * step} 240 240)`}>
-                    {display.images && (
-                      <g>
+                  {display.images && (
+                    <g
+                      transform={`translate(${layout.imageX} ${layout.imageY})`}
+                    >
+                      <g
+                        data-wheel-upright="true"
+                        transform={`rotate(${-rotation})`}
+                      >
                         {p.image ? (
                           <image
+                            className="prize-wheel-image"
                             href={assetUrl(p.image)}
-                            x={count > 8 ? 220 : 213}
-                            y="63"
-                            width={count > 8 ? 40 : 54}
-                            height={count > 8 ? 40 : 54}
+                            x={-layout.imageSize / 2}
+                            y={-layout.imageSize / 2}
+                            width={layout.imageSize}
+                            height={layout.imageSize}
                             preserveAspectRatio="xMidYMid meet"
                           />
                         ) : (
                           <text
-                            x="240"
-                            y="96"
+                            x="0"
+                            y={layout.imageSize * 0.15}
                             textAnchor="middle"
                             fill={text}
-                            fontSize="30"
+                            fontSize={layout.imageSize * 0.65}
                           >
                             ✧
                           </text>
                         )}
                       </g>
-                    )}
-                    {display.names && (
-                      <text
-                        x="240"
-                        y={display.images ? 131 : 110}
-                        textAnchor="middle"
-                        fill={text}
-                        fontSize={count >= 7 ? 11 : 15}
-                        fontWeight="700"
-                      >
-                        {lines.map((line, j) => (
-                          <tspan key={j} x="240" dy={j === 0 ? 0 : 17}>
-                            {line}
-                          </tspan>
-                        ))}
-                      </text>
-                    )}
-                    {display.probabilities && (
-                      <text
-                        x="240"
-                        y={display.images ? 165 : 153}
-                        textAnchor="middle"
-                        fill={text}
-                        fontSize={count > 8 ? 9 : 11}
-                      >
-                        {(probabilities?.[p.id] ?? p.weight).toFixed(1)}%
-                      </text>
-                    )}
-                    {display.descriptions && (
-                      <text
-                        x="240"
-                        y={display.images ? 180 : 174}
-                        textAnchor="middle"
-                        fill={text}
-                        fontSize="8"
-                      >
-                        {p.description.slice(0, count > 8 ? 4 : 8)}
-                        {p.description.length > (count > 8 ? 4 : 8) ? "…" : ""}
-                      </text>
-                    )}
+                    </g>
+                  )}
+                  <g
+                    transform={`translate(240 240) rotate(${layout.angle}) translate(0 ${-layout.textRadius})`}
+                  >
+                    <g
+                      className="prize-wheel-label"
+                      transform={
+                        layout.angle > 90 && layout.angle < 270
+                          ? "rotate(180)"
+                          : undefined
+                      }
+                    >
+                      {rows.map((line, j) => (
+                        <text
+                          key={j}
+                          x="0"
+                          y={
+                            -layout.textHeight / 2 +
+                            layout.lineHeight * (j + 0.82)
+                          }
+                          textAnchor="middle"
+                          fill={text}
+                          fontSize={layout.fontSize}
+                          fontWeight={j < lines.length ? "700" : "400"}
+                        >
+                          {line}
+                        </text>
+                      ))}
+                    </g>
                   </g>
                 </g>
               );
             })}
           </svg>
-          <div className="wheel-hub">
+          <div
+            className="wheel-hub"
+            style={{
+              width: `${WHEEL_HUB_SIZE_RATIO * 100}%`,
+              height: `${WHEEL_HUB_SIZE_RATIO * 100}%`,
+            }}
+          >
             {/* Show only the original logo's right-hand symbol, without altering the artwork. */}
             <svg
               className="hub-symbol"

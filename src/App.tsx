@@ -122,12 +122,18 @@ export default function App() {
       "(prefers-reduced-motion: reduce)",
     ).matches;
     const duration = reduced ? 700 : pending.duration;
+    const uprightImages = wheelRef.current?.querySelectorAll<SVGGElement>(
+      "[data-wheel-upright]",
+    );
     const start = performance.now();
     function animate(time: number) {
       const progress = Math.min(1, (time - start) / duration);
       const rotation = pending!.target * (1 - Math.pow(1 - progress, 4));
       if (wheelRef.current)
         wheelRef.current.style.transform = `rotate(${rotation}deg)`;
+      uprightImages?.forEach((image) =>
+        image.setAttribute("transform", `rotate(${-rotation})`),
+      );
       const index = indexAtPointer(rotation, pending!.wheel.length);
       if (index !== lastIndex && pointerRef.current) {
         pointerRef.current.classList.remove("tick");

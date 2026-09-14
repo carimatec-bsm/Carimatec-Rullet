@@ -34,6 +34,7 @@ import { makeId, readStore, resetData, saveConfig } from "../utils/storage";
 import {
   fetchPublishedConfig,
   publishConfig,
+  publicSettings,
   isNewerRevision,
 } from "../utils/github";
 import { validateConfig, assertConfig } from "../utils/validation";
@@ -875,10 +876,11 @@ export function AdminDashboard() {
                   <div className="settings-actions">
                     <button
                       className="button secondary"
+                      disabled={!!errors.length}
                       onClick={() =>
                         downloadFile(
-                          JSON.stringify(draft, null, 2),
-                          "carimatec-settings.json",
+                          JSON.stringify(publicSettings(draft), null, 2),
+                          "event.json",
                           "application/json",
                         )
                       }
@@ -907,6 +909,13 @@ export function AdminDashboard() {
                       기기 전체 백업
                     </button>
                   </div>
+                  <p className="small muted">
+                    설정 JSON은 새 게시 버전이 포함된 event.json으로 저장됩니다.
+                    GitHub의 public/data/event.json과 docs/data/event.json을
+                    같은 내용으로 교체하고 커밋하세요. 배포 후 운영 기기에서
+                    최신 공통 설정을 불러오세요. 기기 전체 백업은 GitHub에
+                    올리지 마세요.
+                  </p>
                   <input
                     hidden
                     ref={importRef}
