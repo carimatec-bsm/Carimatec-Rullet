@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "initial",
+  "revision": "2026-09-14T04:57:33.137Z",
   "eventId": "intra-2026",
   "event": {
     "name": "INTRA 2026",
@@ -41,9 +41,9 @@
       "image": "assets/prize-coffee.svg",
       "color": "#7030A0",
       "weight": 5,
+      "active": true,
       "initialStock": 50,
       "unlimited": false,
-      "active": true,
       "isLose": false
     },
     {
@@ -54,9 +54,9 @@
       "image": "assets/prize-goods.svg",
       "color": "#F0E8F7",
       "weight": 10,
+      "active": true,
       "initialStock": 100,
       "unlimited": false,
-      "active": true,
       "isLose": false
     },
     {
@@ -67,9 +67,9 @@
       "image": "assets/prize-tumbler.svg",
       "color": "#B28CD0",
       "weight": 15,
+      "active": true,
       "initialStock": 100,
       "unlimited": false,
-      "active": true,
       "isLose": false
     },
     {
@@ -80,9 +80,9 @@
       "image": "assets/prize-pen.svg",
       "color": "#E2D2EE",
       "weight": 40,
+      "active": true,
       "initialStock": 300,
       "unlimited": false,
-      "active": true,
       "isLose": false
     },
     {
@@ -93,9 +93,9 @@
       "image": "assets/prize-keyring.svg",
       "color": "#8C55B3",
       "weight": 30,
+      "active": true,
       "initialStock": 200,
       "unlimited": false,
-      "active": true,
       "isLose": false
     }
   ]
