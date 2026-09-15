@@ -49,6 +49,11 @@ export function validateConfig(value: unknown): string[] {
     if (!Number.isFinite(p.weight) || p.weight < 0 || p.weight > 100)
       errors.push("확률은 0~100 사이 숫자로 입력해 주세요.");
     if (
+      p.rankLabel !== undefined &&
+      (typeof p.rankLabel !== "string" || p.rankLabel.length > 12)
+    )
+      errors.push("등수 / 구분은 12자 이내로 입력해 주세요.");
+    if (
       !Number.isSafeInteger(p.initialStock) ||
       p.initialStock < 0 ||
       p.initialStock > 1000000

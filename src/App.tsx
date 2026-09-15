@@ -11,6 +11,8 @@ import {
   VolumeX,
 } from "lucide-react";
 import { Logo } from "./components/Logo";
+import { PrizeLineup } from "./components/PrizeLineup";
+import { prizeRank } from "./utils/prizeRank";
 import { RouletteWheel } from "./components/RouletteWheel";
 import { CustomerForm } from "./components/CustomerForm";
 import { ResultModal } from "./components/ResultModal";
@@ -197,6 +199,16 @@ export default function App() {
       ? "준비된 경품이 모두 소진되었습니다. 운영자에게 문의해 주세요."
       : "");
   const wheelPrizes = pending?.wheel || config.prizes.filter((p) => p.active);
+  const lineupPrizes = wheelPrizes.map((prize, index) => ({
+    ...prize,
+    rankLabel: prizeRank(
+      prize,
+      Math.max(
+        index,
+        config.prizes.findIndex((p) => p.id === prize.id),
+      ),
+    ),
+  }));
   const probabilities = Object.fromEntries(
     wheelPrizes.map((p) => [p.id, effectiveProbability(p, config, state.used)]),
   );
@@ -308,6 +320,10 @@ export default function App() {
             </p>
           </div>
         </section>
+        <PrizeLineup
+          prizes={lineupPrizes}
+          disabled={spinning || busy || !!pending}
+        />
       </main>
       <footer className="visitor-footer">
         <span>

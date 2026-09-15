@@ -2,6 +2,7 @@ export type Prize = {
   id: string;
   name: string;
   label: string;
+  rankLabel?: string;
   description: string;
   image: string;
   color: string;

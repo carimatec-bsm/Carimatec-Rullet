@@ -191,6 +191,7 @@ export function publicSettings(config: Config): Config {
         "id",
         "name",
         "label",
+        "rankLabel",
         "description",
         "image",
         "color",

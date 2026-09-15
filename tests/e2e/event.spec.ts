@@ -25,6 +25,70 @@ test("fresh API settings cannot be overwritten by an older CDN poll", async ({
   await expect(page.locator(".event-badge")).toContainText("최신 공통 설정");
 });
 const KEY = "carimatec.roulette.v1";
+
+test("editable ranks persist and populate the centered wheel prize lineup", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await login(page);
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await page
+    .getByLabel("스타벅스 상품권 등수 / 구분", { exact: true })
+    .fill("특별상");
+  await page
+    .getByRole("button", { name: "이 기기에 저장", exact: true })
+    .click();
+  await page.reload();
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await expect(
+    page.getByLabel("스타벅스 상품권 등수 / 구분", { exact: true }),
+  ).toHaveValue("특별상");
+  await page
+    .getByRole("button", { name: "운영 및 데이터", exact: true })
+    .click();
+  const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "설정 JSON 내보내기", exact: true })
+    .click();
+  const exported = JSON.parse(
+    await readFile((await (await download).path())!, "utf8"),
+  );
+  expect(exported.prizes[0].rankLabel).toBe("특별상");
+  await page.goto("/");
+  const lineup = page.locator(".prize-lineup");
+  await expect(lineup.locator(".lineup-item")).toHaveCount(5);
+  const card = lineup.locator('[data-lineup-id="coffee"]');
+  await expect(card.locator(".lineup-rank")).toHaveText("특별상");
+  await expect(card.locator(".lineup-name")).toHaveText("스타벅스 상품권");
+  for (const prize of cloneConfig().prizes) {
+    const item = lineup.locator(`[data-lineup-id="${prize.id}"]`);
+    expect(
+      await item.evaluate((el) =>
+        (el as HTMLElement).style.getPropertyValue("--prize-color"),
+      ),
+    ).toBe(prize.color);
+    await expect(item.locator("img")).toHaveAttribute(
+      "src",
+      new RegExp(prize.image.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$"),
+    );
+  }
+  const wheel = await page.locator(".wheel-wrap").boundingBox();
+  const panel = await lineup.boundingBox();
+  expect(Math.abs(wheel!.x + wheel!.width / 2 - 960)).toBeLessThan(3);
+  expect(panel!.x).toBeGreaterThan(wheel!.x + wheel!.width);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("button", { name: "전체 경품 보기", exact: true })
+    .click();
+  const modal = page.getByRole("dialog", { name: "전체 경품 목록" });
+  await expect(modal.locator(".lineup-item")).toHaveCount(5);
+  await expect(
+    modal.locator('[data-lineup-id="coffee"] .lineup-rank'),
+  ).toHaveText("특별상");
+  await modal.getByRole("button", { name: "확인", exact: true }).click();
+  await expect(modal).not.toBeVisible();
+});
 test("settings export is a publishable event.json with fresh revision", async ({
   page,
 }) => {
@@ -575,6 +639,10 @@ test("GitHub publish shares only configuration across devices and detects confli
   await login(page);
   await page.getByRole("button", { name: "이벤트 설정", exact: true }).click();
   await page.getByLabel("전시회명", { exact: true }).fill("기기 공유 검증");
+  await page.getByRole("button", { name: "경품 관리", exact: true }).click();
+  await page
+    .getByLabel("스타벅스 상품권 등수 / 구분", { exact: true })
+    .fill("최우수상");
   await page
     .getByRole("button", { name: "공통 설정 저장", exact: true })
     .click();
@@ -598,6 +666,10 @@ test("GitHub publish shares only configuration across devices and detects confli
   await mockRaw(other);
   await other.goto("http://127.0.0.1:4173/");
   await expect(other.locator(".event-badge")).toContainText("기기 공유 검증");
+  await expect(
+    other.locator('.prize-lineup [data-lineup-id="coffee"] .lineup-rank'),
+  ).toHaveText("최우수상");
+  expect(remote.prizes[0].rankLabel).toBe("최우수상");
   await context.close();
   remote = { ...remote, revision: "a-newer-edit" };
   await page
@@ -657,6 +729,50 @@ for (const viewport of [
   });
 }
 
+for (const variant of [
+  { width: 1920, height: 1080, layout: "portrait" as const, count: 5 },
+  { width: 1080, height: 1920, layout: "portrait" as const, count: 5 },
+  { width: 1366, height: 768, layout: "auto" as const, count: 12 },
+  { width: 768, height: 1024, layout: "auto" as const, count: 7 },
+]) {
+  test(`lineup fits ${variant.layout} ${variant.width}x${variant.height} with ${variant.count} prizes`, async ({
+    page,
+  }) => {
+    const config = cloneConfig();
+    config.display.layout = variant.layout;
+    config.prizes = Array.from({ length: variant.count }, (_, i) => ({
+      ...config.prizes[i % config.prizes.length],
+      id: `layout-${i}`,
+      rankLabel: `특별 참여상 ${i + 1}`,
+      weight:
+        i === variant.count - 1
+          ? 100 - (variant.count - 1) * Math.floor(100 / variant.count)
+          : Math.floor(100 / variant.count),
+    }));
+    await seed(page, config);
+    await page.setViewportSize({
+      width: variant.width,
+      height: variant.height,
+    });
+    await page.goto("/");
+    await expect(page.locator(".prize-lineup .lineup-item")).toHaveCount(
+      variant.count,
+    );
+    for (const selector of [".spin-button", ".prize-lineup"]) {
+      const box = await page.locator(selector).boundingBox();
+      expect(box!.y).toBeGreaterThanOrEqual(0);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(variant.height);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(variant.width);
+    }
+    await page
+      .getByRole("button", { name: "전체 경품 보기", exact: true })
+      .click();
+    await expect(page.locator(".lineup-modal .lineup-item")).toHaveCount(
+      variant.count,
+    );
+  });
+}
+
 for (const count of [2, 12]) {
   test(`${count} prize wheel supports all display options and dark theme`, async ({
     page,
@@ -684,6 +800,7 @@ for (const count of [2, 12]) {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto("/");
     await expect(page.locator("[data-prize-id]")).toHaveCount(count);
+    await expect(page.locator(".prize-lineup .lineup-item")).toHaveCount(count);
     await page.screenshot({ path: `.qa/wheel-${count}-dark.png` });
     await initiate(page);
     await expect(page.getByRole("dialog", { name: "룰렛 결과" })).toBeVisible({

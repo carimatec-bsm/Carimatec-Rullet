@@ -18,6 +18,7 @@ import {
 } from "../utils/rouletteLogic";
 import { Modal } from "../components/Modal";
 import { SegmentColorPicker } from "./SegmentColorPicker";
+import { prizeRank } from "../utils/prizeRank";
 export function PrizeManager({
   config,
   update,
@@ -56,6 +57,7 @@ export function PrizeManager({
                   id: `prize-${makeId()}`,
                   name: "새 경품",
                   label: "새 경품",
+                  rankLabel: `${config.prizes.length + 1}등`,
                   description: "",
                   image: "",
                   color: "#7030A0",
@@ -175,6 +177,22 @@ export function PrizeManager({
                       change(prize.id, { label: e.target.value })
                     }
                   />
+                </label>
+                <label className="span-two">
+                  등수 / 구분
+                  <input
+                    aria-label={`${prize.name} 등수 / 구분`}
+                    maxLength={12}
+                    value={prize.rankLabel ?? ""}
+                    placeholder={prizeRank(prize, index)}
+                    onChange={(e) =>
+                      change(prize.id, { rankLabel: e.target.value })
+                    }
+                  />
+                  <small className="rank-help">
+                    예: 1등, 2등, 특별상 · 빈칸은 등록 순서 기준으로 자동
+                    표시됩니다. 확률에는 영향을 주지 않습니다.
+                  </small>
                 </label>
                 <label className="span-two">
                   상품 설명
