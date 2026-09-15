@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "revision": "2026-09-14T08:59:29.696Z",
+  "revision": "2026-09-15T00:02:46.756Z",
   "eventId": "intra-2026",
   "event": {
     "name": "INTRA 2026",
@@ -22,7 +22,7 @@
   },
   "behavior": {
     "autoExclude": false,
-    "duration": 5000,
+    "duration": 4000,
     "paused": false,
     "collectCustomers": false,
     "required": {
