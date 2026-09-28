@@ -9,6 +9,7 @@ import {
   MousePointer2,
   Settings,
   VolumeX,
+  Volume2,
 } from "lucide-react";
 import { Logo } from "./components/Logo";
 import { PrizeLineup } from "./components/PrizeLineup";
@@ -36,6 +37,8 @@ import {
   indexAtPointer,
 } from "./utils/rouletteLogic";
 import type { Customer } from "./types";
+import { soundSettings } from "./utils/soundEffects";
+import { useSoundEffects } from "./hooks/useSoundEffects";
 export default function App() {
   const [state, setState] = useState(readStore);
   const [formOpen, setFormOpen] = useState(false);
@@ -53,6 +56,27 @@ export default function App() {
   const config = state.config;
   const pending = state.pending;
   const spinning = phase === "spinning";
+  const sound = useSoundEffects();
+  const [soundOverride, setSoundOverride] = useState<boolean | null>(null);
+  const audioRequest = useRef(0);
+  const savedSound = soundSettings(config.sound);
+  const soundEnabled = soundOverride ?? savedSound.enabled;
+  useEffect(() => {
+    setSoundOverride(null);
+  }, [savedSound.enabled]);
+  useEffect(() => {
+    sound.configure({ enabled: soundEnabled, volume: savedSound.volume });
+  }, [sound, soundEnabled, savedSound.volume]);
+  function prepareSound(enabled = soundEnabled) {
+    const request = ++audioRequest.current;
+    sound.configure({ enabled, volume: savedSound.volume });
+    void sound.activate().then((ready) => {
+      if (!ready && request === audioRequest.current)
+        setError(
+          "소리를 재생하지 못했습니다. 스피커 버튼을 다시 눌러 주세요. 룰렛은 소리 없이도 정상 진행됩니다.",
+        );
+    });
+  }
   useEffect(() => {
     let cancelled = false;
     let pollCount = 0;
@@ -120,6 +144,7 @@ export default function App() {
     if (!spinning || !pending) return;
     let frame = 0;
     let lastIndex = -1;
+    let completed = false;
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -142,30 +167,39 @@ export default function App() {
         void pointerRef.current.offsetWidth;
         pointerRef.current.classList.add("tick");
         lastIndex = index;
+        sound.tick();
         window.dispatchEvent(
           new CustomEvent("carimatec-wheel-tick", { detail: { index } }),
         );
       }
       if (progress < 1) frame = requestAnimationFrame(animate);
       else {
+        completed = true;
+        if (pending!.prize.isLose) sound.stop();
+        else sound.celebrate();
         setPhase("result");
         touchGuard.current = false;
       }
     }
     frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [spinning, pending?.record.id]);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!completed) sound.stop();
+    };
+  }, [spinning, pending?.record.id, sound]);
   async function spin(customer: Customer) {
     if (touchGuard.current) return;
     touchGuard.current = true;
     setBusy(true);
     setError("");
+    prepareSound();
     try {
       const next = await startSpin(customer);
       setState(next);
       setFormOpen(false);
       setPhase("spinning");
     } catch (e) {
+      sound.stop();
       setError((e as Error).message);
       touchGuard.current = false;
     } finally {
@@ -173,6 +207,7 @@ export default function App() {
     }
   }
   function nextParticipant() {
+    sound.stop();
     try {
       setState(finishParticipant());
       setPhase("idle");
@@ -294,6 +329,7 @@ export default function App() {
               onClick={() => {
                 if (!touchGuard.current) {
                   setError("");
+                  prepareSound();
                   setFormOpen(true);
                 }
               }}
@@ -330,7 +366,22 @@ export default function App() {
           BEYOND PRINTING. <strong>CREATE POSSIBILITIES.</strong>
         </span>
         <div>
-          <VolumeX size={14} />
+          <button
+            className="icon-button sound-toggle"
+            aria-label={soundEnabled ? "효과음 끄기" : "효과음 켜기"}
+            aria-pressed={soundEnabled}
+            title={
+              soundEnabled
+                ? `효과음 켜짐 · 음량 ${savedSound.volume}%`
+                : "효과음 꺼짐"
+            }
+            onClick={() => {
+              setSoundOverride(!soundEnabled);
+              prepareSound(!soundEnabled);
+            }}
+          >
+            {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          </button>
           <span>
             {config.event.startDate &&
               `${config.event.startDate.replace(/-/g, ".")} — ${config.event.endDate.replace(/-/g, ".")}`}

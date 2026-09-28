@@ -3379,6 +3379,37 @@ td .tag {
 }
 
 /* The visitor prize list reads the same active prizes and colors as the wheel. */
+.sound-volume {
+  display: block;
+  margin: 20px 0;
+}
+.sound-volume input[type="range"] {
+  display: block;
+  width: 100%;
+  min-height: 50px;
+  accent-color: #7030a0;
+}
+.sound-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.visitor-footer .sound-toggle {
+  flex-shrink: 0;
+  min-width: 50px;
+  min-height: 50px;
+  color: inherit;
+}
+.visitor-footer {
+  min-height: 54px;
+}
+.sound-toggle[aria-pressed="true"] {
+  color: #7030a0;
+  background: #7030a012;
+}
+.theme-dark .sound-toggle[aria-pressed="true"] {
+  color: #d6b9ec;
+}
 .rank-help {
   display: block;
   font-size: 10px;

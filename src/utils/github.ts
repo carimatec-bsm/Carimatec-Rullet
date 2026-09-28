@@ -186,6 +186,9 @@ export function publicSettings(config: Config): Config {
         "email",
       ]),
     },
+    ...(config.sound
+      ? { sound: pick(config.sound, ["enabled", "volume"]) }
+      : {}),
     prizes: config.prizes.map((p) =>
       pick(p, [
         "id",

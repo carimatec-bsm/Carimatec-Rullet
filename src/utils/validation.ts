@@ -130,6 +130,15 @@ export function validateConfig(value: unknown): string[] {
     c.behavior.duration > 6000
   )
     errors.push("회전 시간은 4~6초로 설정해 주세요.");
+  if (
+    c.sound !== undefined &&
+    (!c.sound ||
+      typeof c.sound.enabled !== "boolean" ||
+      !Number.isFinite(c.sound.volume) ||
+      c.sound.volume < 0 ||
+      c.sound.volume > 100)
+  )
+    errors.push("효과음 설정과 음량(0~100)을 확인해 주세요.");
   return [...new Set(errors)];
 }
 export function assertConfig(value: unknown): asserts value is Config {

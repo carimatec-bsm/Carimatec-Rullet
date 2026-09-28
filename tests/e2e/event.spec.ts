@@ -643,6 +643,9 @@ test("GitHub publish shares only configuration across devices and detects confli
   await page
     .getByLabel("스타벅스 상품권 등수 / 구분", { exact: true })
     .fill("최우수상");
+  await page.getByRole("button", { name: "룰렛 디자인", exact: true }).click();
+  await page.getByLabel("효과음 사용", { exact: true }).check();
+  await page.getByLabel("효과음 음량", { exact: true }).fill("45");
   await page
     .getByRole("button", { name: "공통 설정 저장", exact: true })
     .click();
@@ -670,6 +673,10 @@ test("GitHub publish shares only configuration across devices and detects confli
     other.locator('.prize-lineup [data-lineup-id="coffee"] .lineup-rank'),
   ).toHaveText("최우수상");
   expect(remote.prizes[0].rankLabel).toBe("최우수상");
+  expect(remote.sound).toEqual({ enabled: true, volume: 45 });
+  await expect(
+    other.getByRole("button", { name: "효과음 끄기", exact: true }),
+  ).toBeVisible();
   await context.close();
   remote = { ...remote, revision: "a-newer-edit" };
   await page

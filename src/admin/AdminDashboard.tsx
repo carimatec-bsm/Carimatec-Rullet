@@ -29,6 +29,7 @@ import { Modal } from "../components/Modal";
 import { RouletteWheel } from "../components/RouletteWheel";
 import { fieldLabels } from "../components/CustomerForm";
 import { PrizeManager } from "./PrizeManager";
+import { SoundSettingsPanel } from "./SoundSettingsPanel";
 import { ParticipantList } from "./ParticipantList";
 import { makeId, readStore, resetData, saveConfig } from "../utils/storage";
 import {
@@ -662,6 +663,12 @@ export function AdminDashboard() {
                   </p>
                 </section>
               </>
+            )}
+            {tab === "display" && (
+              <SoundSettingsPanel
+                value={draft.sound}
+                onChange={(sound) => setDraft({ ...draft, sound })}
+              />
             )}
             {tab === "event" && (
               <>

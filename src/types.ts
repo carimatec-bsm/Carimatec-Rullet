@@ -19,11 +19,13 @@ export type Customer = {
   email: string;
 };
 export type CustomerField = keyof Customer;
+export type SoundSettings = { enabled: boolean; volume: number };
 export type Config = {
   version: 1;
   revision: string;
   baseRevision?: string;
   eventId: string;
+  sound?: SoundSettings;
   event: {
     name: string;
     mainTitle: string;

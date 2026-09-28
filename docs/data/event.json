@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "revision": "2026-09-15T00:02:46.756Z",
+  "revision": "2026-09-28T04:49:54.837Z",
   "eventId": "intra-2026",
   "event": {
     "name": "INTRA 2026",
     "mainTitle": "LUCKY",
-    "subTitle": "ROULET",
-    "guide": "설문에 참여하고, 나만의 행운을 만나보세요.",
+    "subTitle": "ROULETTE",
+    "guide": "3D프린팅 기술로 만드는 즐거움, 캐리마텍 룰렛 이벤트에서 확인하세요!",
     "startDate": "2026-09-30",
     "endDate": "2026-10-02",
     "enforceDates": false,
